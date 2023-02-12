@@ -5,8 +5,7 @@ import chroma from 'chroma-js';
 import './App.css';
 import { Tooltip } from "./Tooltip";
 
-const colors = chroma.scale(['red', 'blue', 'green']).mode('lch').colors(14);
-
+//Converting the JSON to mapped array for simpler use
 const data = sampleData.xumap.map((x, i) => ({
   x,
   y: sampleData.yumap[i],
@@ -14,6 +13,8 @@ const data = sampleData.xumap.map((x, i) => ({
   name: sampleData.cellid[i]
 }));
 
+//Color Schema for the 14 legend values and matching the colors with the cell types
+const colors = chroma.scale(['red', 'blue', 'green']).mode('lch').colors(14);
 const colorMap = sampleData.celltypes.slice(0, -1).map((x,i) => ({
   key: x,
   value: colors[i],
@@ -30,23 +31,16 @@ const App = () => {
   const svgRef = useRef(null);
   const legendRef = useRef(null);
 
+  //To invoke the tooltip component when needed
   const [hovered, setHovered] = useState({ xPos: 0, yPos: 0, type: null, name: null });
 
   useEffect(() => {
-    const xScale = d3.scaleLinear()
-      .domain([d3.min(data, d => d.x)-1, d3.max(data, d => d.x)+1])
-      .range([padding, width - padding]);
-  
-    const yScale = d3.scaleLinear()
-      .domain([d3.min(data, d => d.y)-1, d3.max(data, d => d.y)+1])
-      .range([height - padding, padding]);
-  
-    
+
     const svg = d3.select(svgRef.current);
     const legend = d3.select(legendRef.current);
   
-    // Three function that change the tooltip when user hover / move / leave a cell
-    var mouseover = function(d) {
+    // Three function that change the tooltip when user hover a circle
+    const mouseover = function(d) {
       const data = d3.select(this).data()[0];
       setHovered({ xPos: xScale(data.x), yPos: yScale(data.y), type: data.type, name: data.name });
       d3.select(this)
@@ -54,13 +48,38 @@ const App = () => {
         .style("opacity", 1);
     } 
 
-    var mouseleave = function(d) {
+    // Three function that change the tooltip when user leave a circle
+    const mouseleave = function(d) {
       const data = d3.select(this).data()[0];
       d3.select(this)
         .style("stroke", d => colorMap.find((item) => item.key===data.type).value)
       setHovered({ xPos: 0, yPos: 0, type: null, name: null });
     }
+
+    //Liner Scales for X and Y axis
+    const xScale = d3.scaleLinear()
+      .domain([d3.min(data, d => d.x)-1, d3.max(data, d => d.x)+1])
+      .range([padding, width - padding]);
   
+    const yScale = d3.scaleLinear()
+      .domain([d3.min(data, d => d.y)-1, d3.max(data, d => d.y)+1])
+      .range([height - padding, padding]);
+
+    const xAxis = d3.axisBottom(xScale)
+      .ticks(20);
+  
+    svg.append("g")
+      .attr("transform", `translate(0, ${height - padding})`)
+      .call(xAxis);
+    
+    const yAxis = d3.axisLeft(yScale)
+      .ticks(20);
+  
+    svg.append("g")
+      .attr("transform", `translate(${padding}, 0)`)
+      .call(yAxis);
+  
+    //Plotting all the datapoints
     svg.selectAll("circle")
       .data(data)
       .enter()
@@ -74,20 +93,7 @@ const App = () => {
       .on("mouseover", mouseover)
       .on("mouseleave", mouseleave);
   
-    const xAxis = d3.axisBottom(xScale)
-      .ticks(20);
-  
-    svg.append("g")
-      .attr("transform", `translate(0, ${height - padding})`)
-      .call(xAxis);
-    
-      const yAxis = d3.axisLeft(yScale)
-      .ticks(20);
-  
-    svg.append("g")
-      .attr("transform", `translate(${padding}, 0)`)
-      .call(yAxis);
-  
+    //Polulating the legend
     legend.selectAll(".legend")
       .data(colorMap)
       .enter()
